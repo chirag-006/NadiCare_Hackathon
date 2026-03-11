@@ -14,5 +14,5 @@
 window.APP_CONFIG = {
   apiBase: window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
     ? ''
-    : 'https://YOUR-APP.onrender.com'   // ← Replace this after Render deployment
+    : 'https://nadicare-hackathon.onrender.com'   // ← Replace this after Render deployment
 };
