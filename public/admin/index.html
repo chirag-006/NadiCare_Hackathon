@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin — NadiCare Evaluator</title>
+  <link rel="stylesheet" href="admin.css" />
+</head>
+<body>
+
+<!-- ══════════ ADMIN LOGIN ══════════ -->
+<div id="admin-login-page" class="page active">
+  <div class="login-wrapper">
+    <div class="login-logo">
+      <div class="college-name">B.N.M Institute of Technology</div>
+      <div class="divider-line"></div>
+      <div class="hackathon-name">NadiCare — Admin Panel</div>
+    </div>
+    <div class="login-card">
+      <span class="lock-icon">🛡️</span>
+      <h2>Admin Login</h2>
+      <p class="subtitle">Restricted to administrators only</p>
+      <form id="admin-login-form" novalidate>
+        <div id="admin-login-error" class="error-msg"></div>
+        <div class="form-group">
+          <label for="admin-username">Username</label>
+          <input type="text" id="admin-username" placeholder="Admin username" required />
+        </div>
+        <div class="form-group">
+          <label for="admin-password">Password</label>
+          <input type="password" id="admin-password" placeholder="Admin password" required />
+        </div>
+        <button type="submit" class="btn-primary" id="admin-login-btn" style="margin-top:.5rem">
+          Sign In &nbsp;→
+        </button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ ADMIN DASHBOARD ══════════ -->
+<div id="admin-dashboard-page" class="page">
+  <div style="width:100%;display:flex;flex-direction:column;min-height:100vh">
+
+    <!-- Header -->
+    <header class="app-header">
+      <div class="header-titles">
+        <div class="college">B.N.M Institute of Technology</div>
+        <div class="hackathon">NadiCare — Admin Dashboard</div>
+      </div>
+      <div class="header-right">
+        <a href="/" class="btn-secondary" style="padding:.4rem .9rem;font-size:.8rem;text-decoration:none">← Evaluator App</a>
+        <button id="admin-logout-btn" class="btn-secondary" style="padding:.4rem .9rem;font-size:.8rem">Log out</button>
+      </div>
+    </header>
+
+    <!-- Tabs -->
+    <nav class="tab-nav">
+      <button class="tab-btn active" data-tab="eval-tab">📊 &nbsp;Evaluations</button>
+      <button class="tab-btn" data-tab="teams-tab">🏆 &nbsp;Teams</button>
+      <button class="tab-btn" data-tab="judges-tab">👥 &nbsp;Judges</button>
+    </nav>
+
+    <main class="app-content" style="max-width:1100px">
+
+      <!-- ── EVALUATIONS TAB ── -->
+      <div id="eval-tab" class="tab-panel active">
+
+        <!-- Leaderboard -->
+        <div id="leaderboard-section" style="display:none;margin-bottom:2rem">
+          <div class="card-label" style="margin-bottom:1rem">
+            <span style="display:inline-block;width:3px;height:14px;background:var(--orange-primary);border-radius:2px"></span>
+            Live Leaderboard
+          </div>
+          <div class="podium-row" id="admin-podium-row"></div>
+          <div class="rank-list" id="admin-rank-list"></div>
+        </div>
+
+        <!-- Stats -->
+        <div class="stats-row" style="grid-template-columns:repeat(4,1fr)">
+          <div class="stat-card"><div class="stat-value" id="admin-stat-total">0</div><div class="stat-label">Submissions</div></div>
+          <div class="stat-card"><div class="stat-value" id="admin-stat-teams">0</div><div class="stat-label">Teams Evaluated</div></div>
+          <div class="stat-card"><div class="stat-value" id="admin-stat-avg">—</div><div class="stat-label">Avg Score</div></div>
+          <div class="stat-card"><div class="stat-value" id="admin-stat-judges">0</div><div class="stat-label">Judges Active</div></div>
+        </div>
+
+        <!-- Actions -->
+        <div class="dash-header" style="margin-bottom:1.5rem">
+          <h2>All Evaluations</h2>
+          <div class="action-row">
+            <button id="download-excel-btn" class="btn-primary"
+              style="display:inline-flex;align-items:center;gap:.4rem;background:linear-gradient(135deg,#22c55e,#16a34a);box-shadow:0 4px 15px rgba(34,197,94,.3)">
+              ⬇ &nbsp;Download Excel
+            </button>
+            <button id="clear-all-btn" class="btn-danger" style="display:inline-flex;align-items:center;gap:.4rem">
+              🗑️ &nbsp;Clear All Data
+            </button>
+          </div>
+        </div>
+
+        <!-- Table -->
+        <div class="table-wrap">
+          <table class="eval-table">
+            <thead><tr>
+              <th>Timestamp</th><th>Evaluator</th><th>Team</th><th>Problem</th>
+              <th>Innovation</th><th>Technical</th><th>Presentation</th><th>Impact</th><th>UI/UX</th>
+              <th>Total</th><th>Remarks</th><th></th>
+            </tr></thead>
+            <tbody id="admin-table-body"></tbody>
+          </table>
+          <div id="admin-empty-state" class="empty-state">
+            <div class="empty-icon">📋</div>
+            <h3>No evaluations yet</h3>
+            <p>Submitted evaluations will appear here.</p>
+          </div>
+        </div>
+      </div><!-- /eval-tab -->
+
+      <!-- ── TEAMS TAB ── -->
+      <div id="teams-tab" class="tab-panel">
+        <div class="dash-header">
+          <h2>Team Management</h2>
+        </div>
+
+        <!-- Add team form -->
+        <div class="section-card" style="margin-bottom:1.5rem">
+          <div class="card-label">Add New Team</div>
+          <form id="add-team-form">
+            <div id="add-team-error" class="error-msg"></div>
+            <div class="form-row" style="margin-bottom:1rem">
+              <div class="form-group" style="margin:0">
+                <label for="new-team-name">Team Name</label>
+                <input type="text" id="new-team-name" placeholder="e.g. Team Alpha" required />
+              </div>
+            </div>
+            <div class="form-group">
+              <label for="new-team-problem">Problem Statement</label>
+              <textarea id="new-team-problem" placeholder="Describe what this team is building…" style="min-height:80px" required></textarea>
+            </div>
+            <div style="display:flex;justify-content:flex-end">
+              <button type="submit" class="btn-primary" style="width:auto;padding:.75rem 2rem">
+                + Add Team
+              </button>
+            </div>
+          </form>
+        </div>
+
+        <!-- Teams list -->
+        <div id="teams-list"></div>
+        <div id="teams-empty" class="empty-state" style="display:none">
+          <div class="empty-icon">🏆</div>
+          <h3>No teams yet</h3>
+          <p>Add your first team above.</p>
+        </div>
+      </div><!-- /teams-tab -->
+
+      <!-- ── JUDGES TAB ── -->
+      <div id="judges-tab" class="tab-panel">
+        <div class="dash-header">
+          <h2>Judge Management</h2>
+        </div>
+
+        <!-- Add judge form -->
+        <div class="section-card" style="margin-bottom:1.5rem">
+          <div class="card-label">Add New Judge</div>
+          <form id="add-judge-form">
+            <div id="add-judge-error" class="error-msg"></div>
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem;margin-bottom:1rem">
+              <div class="form-group" style="margin:0">
+                <label for="new-judge-name">Full Name</label>
+                <input type="text" id="new-judge-name" placeholder="e.g. Dr. Priya Sharma" required />
+              </div>
+              <div class="form-group" style="margin:0">
+                <label for="new-judge-username">Username</label>
+                <input type="text" id="new-judge-username" placeholder="e.g. priya" required />
+              </div>
+              <div class="form-group" style="margin:0">
+                <label for="new-judge-password">Password</label>
+                <input type="text" id="new-judge-password" placeholder="e.g. judge2025" required />
+              </div>
+            </div>
+            <div style="display:flex;justify-content:flex-end">
+              <button type="submit" class="btn-primary" style="width:auto;padding:.75rem 2rem">
+                + Add Judge
+              </button>
+            </div>
+          </form>
+        </div>
+
+        <div style="margin-bottom:.75rem;font-size:.8rem;color:var(--text-muted)">
+          💡 Share each judge's credentials privately so they can log in at the evaluator app.
+        </div>
+
+        <!-- Judges list -->
+        <div id="judges-list"></div>
+        <div id="judges-empty" class="empty-state" style="display:none">
+          <div class="empty-icon">👥</div>
+          <h3>No judges yet</h3>
+          <p>Add your first judge above.</p>
+        </div>
+      </div><!-- /judges-tab -->
+
+    </main>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="admin-toast"></div>
+
+<script src="../config.js"></script>
+<script src="admin.js"></script>
+</body>
+</html>

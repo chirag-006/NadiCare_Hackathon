@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NadiCare — Hackathon Evaluator | B.N.M Institute of Technology</title>
+  <meta name="description" content="Official evaluation portal for NadiCare HealthTech Hackathon at B.N.M Institute of Technology" />
+  <link rel="stylesheet" href="style.css" />
+  <!-- SheetJS removed per user request (no CSV export) -->
+  <style>
+    /* shake animation */
+    @keyframes shake {
+      0%,100%{transform:translateX(0)}
+      20%{transform:translateX(-8px)}
+      40%{transform:translateX(8px)}
+      60%{transform:translateX(-6px)}
+      80%{transform:translateX(6px)}
+    }
+    .shake { animation: shake 0.4s ease; }
+
+    /* progress bar inside total */
+    .progress-bar-wrap {
+      flex: 1;
+      height: 8px;
+      background: #222;
+      border-radius: 4px;
+      overflow: hidden;
+      margin: 0 1.25rem;
+    }
+    .progress-bar-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #FF6B00, #FF8C00);
+      border-radius: 4px;
+      transition: width 0.3s ease;
+    }
+  </style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════ LOGIN PAGE ══════════════════════════════ -->
+<div id="login-page" class="page active">
+  <div class="login-wrapper">
+    <div class="login-logo">
+      <div class="college-name">B.N.M Institute of Technology</div>
+      <div class="divider-line"></div>
+      <div class="hackathon-name">NadiCare — A HealthTech Hackathon</div>
+    </div>
+
+    <div class="login-card">
+      <span class="lock-icon">🔐</span>
+      <h2>Evaluator Login</h2>
+      <p class="subtitle">Access restricted to authorized judges only</p>
+
+      <form id="login-form" novalidate>
+        <div id="login-error" class="error-msg"></div>
+
+        <div class="form-group">
+          <label for="username">Username</label>
+          <input type="text" id="username" placeholder="Enter your username" autocomplete="username" required />
+        </div>
+
+        <div class="form-group">
+          <label for="password">Password</label>
+          <input type="password" id="password" placeholder="Enter your password" autocomplete="current-password" required />
+        </div>
+
+        <button type="submit" class="btn-primary" id="login-btn" style="margin-top:0.5rem">
+          Sign In &nbsp;→
+        </button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════ APP PAGE ════════════════════════════════ -->
+<div id="app-page" class="page">
+  <div style="width:100%;display:flex;flex-direction:column;min-height:100vh">
+
+    <!-- Header -->
+    <header class="app-header">
+      <div class="header-titles">
+        <div class="college">B.N.M Institute of Technology</div>
+        <div class="hackathon">NadiCare — A HealthTech Hackathon</div>
+      </div>
+      <div class="header-right">
+        <div class="evaluator-badge">
+          <span class="dot"></span>
+          <span id="evaluator-name"></span>
+        </div>
+        <button id="logout-btn" class="btn-secondary" style="padding:0.4rem 0.9rem;font-size:0.8rem">
+          Log out
+        </button>
+      </div>
+    </header>
+
+    <!-- Tab Nav -->
+    <nav class="tab-nav">
+      <button class="tab-btn active" data-tab="eval-panel">📝 &nbsp;Evaluate</button>
+      <button class="tab-btn" data-tab="dashboard-panel">📊 &nbsp;Dashboard</button>
+    </nav>
+
+    <!-- Network URL Banner -->
+    <div id="network-banner" style="background:rgba(255,107,0,0.08);border-bottom:1px solid rgba(255,107,0,0.2);padding:0.55rem 2rem;display:flex;align-items:center;justify-content:space-between;font-size:0.8rem;gap:1rem;flex-wrap:wrap">
+      <span style="color:var(--text-secondary)">🌐 &nbsp;Share this URL with all evaluators on the same WiFi: &nbsp;<strong id="network-url" style="color:var(--orange-primary);letter-spacing:0.02em">Loading…</strong></span>
+      <button onclick="document.getElementById('network-banner').style.display='none'" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:1rem;line-height:1">✕</button>
+    </div>
+
+    <!-- ── EVALUATE TAB ── -->
+    <main class="app-content">
+      <div id="eval-panel" class="tab-panel active">
+        <form id="eval-form" novalidate>
+
+          <!-- Team & Problem -->
+          <div class="section-card">
+            <div class="card-label">Team Information</div>
+            <div class="form-row">
+              <div class="form-group" style="margin:0">
+                <label for="team-select">Team Name</label>
+                <select id="team-select" required style="background-image:none">
+                  <option value="">— Select a Team —</option>
+                </select>
+                <!-- shown when selected team is already evaluated -->
+                <div id="team-done-warning" style="display:none;margin-top:0.5rem;padding:0.55rem 0.9rem;border-radius:8px;background:rgba(239,68,68,0.12);border:1px solid rgba(239,68,68,0.35);color:#f87171;font-size:0.8rem;font-weight:500">
+                  🔒 You have already evaluated this team. Select a different team.
+                </div>
+              </div>
+              <div class="form-group" style="margin:0">
+                <label for="problem-display">Problem Statement</label>
+                <textarea id="problem-display" readonly placeholder="Auto-filled when a team is selected" style="min-height:70px;cursor:default;opacity:0.7"></textarea>
+              </div>
+            </div>
+          </div>
+
+          <!-- Scoring Criteria -->
+          <div class="section-card">
+            <div class="card-label">Evaluation Criteria &nbsp;(Score each from 1 – 10)</div>
+            <div class="criteria-list" id="criteria-list"></div>
+
+            <!-- Total -->
+            <div class="total-score-bar">
+              <div class="total-label">Total Score</div>
+              <div class="progress-bar-wrap">
+                <div class="progress-bar-fill" id="total-fill" style="width:50%"></div>
+              </div>
+              <div class="total-number">
+                <span id="total-score">25</span>
+                <span id="total-max">/50</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Remarks -->
+          <div class="section-card">
+            <div class="card-label">Additional Remarks</div>
+            <div class="form-group" style="margin:0">
+              <textarea id="remarks" placeholder="Optional — feedback, observations, standout features…" style="min-height:110px"></textarea>
+            </div>
+          </div>
+
+          <!-- Submit -->
+          <div class="submit-area">
+            <button type="submit" class="btn-primary" style="width:auto;padding:0.85rem 2.5rem">
+              Submit Evaluation &nbsp;✓
+            </button>
+          </div>
+
+        </form>
+      </div>
+
+      <!-- ── DASHBOARD TAB ── -->
+      <div id="dashboard-panel" class="tab-panel">
+        <div class="dash-header">
+          <div>
+            <h2>All Evaluations</h2>
+          </div>
+          <div class="action-row"></div>
+        </div>
+
+        <!-- Leaderboard podium -->
+        <div id="leaderboard-section" style="display:none;margin-bottom:2rem">
+          <div class="card-label" style="margin-bottom:1rem;font-size:0.7rem;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--orange-primary);display:flex;align-items:center;gap:0.5rem">
+            <span style="display:inline-block;width:3px;height:14px;background:var(--orange-primary);border-radius:2px"></span>
+            Live Leaderboard
+          </div>
+          <div class="podium-row" id="podium-row"></div>
+        </div>
+
+        <div class="stats-row">
+          <div class="stat-card">
+            <div class="stat-value" id="stat-total">0</div>
+            <div class="stat-label">Submissions</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value" id="stat-teams">0</div>
+            <div class="stat-label">Teams Evaluated</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value" id="stat-avg">—</div>
+            <div class="stat-label">Avg Score</div>
+          </div>
+        </div>
+
+        <div class="table-wrap">
+          <table class="eval-table">
+            <thead>
+              <tr>
+                <th>Timestamp</th>
+                <th>Team</th>
+                <th>Problem Statement</th>
+                <th>Innovation</th>
+                <th>Technical</th>
+                <th>Presentation</th>
+                <th>Impact</th>
+                <th>UI/UX</th>
+                <th>Total</th>
+                <th>Remarks</th>
+                <th>Evaluator</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="table-body"></tbody>
+          </table>
+          <div id="empty-state" class="empty-state">
+            <div class="empty-icon">📋</div>
+            <h3>No evaluations yet</h3>
+            <p>Submit an evaluation from the Evaluate tab.</p>
+          </div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script src="config.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
