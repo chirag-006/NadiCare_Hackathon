@@ -61,7 +61,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // ── Excel download
   document.getElementById('download-excel-btn').addEventListener('click', () => {
-    window.location.href = `${API_BASE}/api/export/excel?t=${adminToken}`;
+    window.location.href = `${API_BASE}/api/export/csv?t=${adminToken}`;
   });
 
   // ── Clear all

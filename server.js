@@ -10,7 +10,6 @@ const cors     = require('cors');
 const path     = require('path');
 const os       = require('os');
 const { Pool } = require('pg');
-const ExcelJS  = require('exceljs');
 
 const app  = express();
 const PORT = process.env.PORT || 3000;
@@ -260,85 +259,77 @@ app.delete('/api/admin/evaluations', requireAdmin, async (req, res) => {
 });
 
 // ════════════════════════════════════════════════════════════
-// EXCEL EXPORT
+// CSV EXPORT  (Team Summary)
 // ════════════════════════════════════════════════════════════
-app.get('/api/export/excel', requireAdmin, async (req, res) => {
+function csvEscape(val) {
+  const s = String(val === null || val === undefined ? '' : val);
+  return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+}
+function csvRow(arr) { return arr.map(csvEscape).join(','); }
+
+app.get('/api/export/csv', requireAdmin, async (req, res) => {
   try {
     const { rows } = await pool.query('SELECT * FROM evaluations ORDER BY id ASC');
     const date = new Date().toISOString().slice(0, 10);
     const MAX  = CRITERIA_KEYS.length * 10;
 
-    const wb = new ExcelJS.Workbook();
-    wb.creator = 'NadiCare Evaluator';
-
-    // Sheet 1 — All Evaluations
-    const s1 = wb.addWorksheet('All Evaluations');
-    s1.columns = [
-      { header: 'ID',                key: 'id',        width: 8  },
-      { header: 'Timestamp',         key: 'timestamp', width: 22 },
-      { header: 'Evaluator',         key: 'evaluator', width: 16 },
-      { header: 'Team Name',         key: 'team',      width: 20 },
-      { header: 'Problem Statement', key: 'problem',   width: 42 },
-      ...CRITERIA_KEYS.map(c => ({ header: c.label, key: c.id, width: 24 })),
-      { header: 'Total',     key: 'total', width: 10 },
-      { header: 'Max',       key: 'max',   width: 10 },
-      { header: 'Remarks',   key: 'remarks', width: 36 }
+    // ── Section 1: All individual evaluations ──
+    const evalHeaders = [
+      'ID', 'Timestamp', 'Evaluator', 'Team Name', 'Problem Statement',
+      ...CRITERIA_KEYS.map(c => c.label),
+      'Total Score', `Max (${MAX})`, 'Remarks'
     ];
-    s1.getRow(1).eachCell(cell => {
-      cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
-      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFF6B00' } };
-      cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
-    });
-    s1.getRow(1).height = 28;
-    rows.forEach(ev => {
+    const evalRows = rows.map(ev => {
       const sc = typeof ev.scores === 'object' ? ev.scores : JSON.parse(ev.scores || '{}');
-      s1.addRow({
-        id: ev.id, timestamp: ev.timestamp, evaluator: ev.evaluator,
-        team: ev.team, problem: ev.problem,
-        ...CRITERIA_KEYS.reduce((a, c) => { a[c.id] = sc[c.id] ?? ''; return a; }, {}),
-        total: ev.total, max: MAX, remarks: ev.remarks || ''
-      });
+      return csvRow([
+        ev.id, ev.timestamp, ev.evaluator, ev.team, ev.problem || '',
+        ...CRITERIA_KEYS.map(c => sc[c.id] ?? ''),
+        ev.total, MAX, ev.remarks || ''
+      ]);
     });
 
-    // Sheet 2 — Team Summary
-    const s2 = wb.addWorksheet('Team Summary');
-    s2.columns = [
-      { header: 'Team Name',      key: 'team',  width: 22 },
-      { header: '# Evaluations',  key: 'count', width: 14 },
-      ...CRITERIA_KEYS.map(c => ({ header: `Avg ${c.label}`, key: c.id, width: 26 })),
-      { header: 'Avg Total', key: 'avg', width: 12 },
-      { header: 'Max',       key: 'max', width: 10 }
+    // ── Section 2: Team summary (avg scores, sorted by avg total) ──
+    const teamMap = {};
+    rows.forEach(ev => { (teamMap[ev.team] = teamMap[ev.team] || []).push(ev); });
+
+    const summaryHeaders = [
+      'Team Name', '# Evaluations',
+      ...CRITERIA_KEYS.map(c => `Avg ${c.label}`),
+      'Avg Total', `Max (${MAX})`
     ];
-    s2.getRow(1).eachCell(cell => {
-      cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
-      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF16A34A' } };
-      cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
-    });
-    s2.getRow(1).height = 28;
-    const tm = {};
-    rows.forEach(ev => { (tm[ev.team] = tm[ev.team] || []).push(ev); });
-    Object.entries(tm).sort((a,b) => {
-      const avg = arr => arr.reduce((s,r) => s + r.total, 0) / arr.length;
-      return avg(b[1]) - avg(a[1]);
-    }).forEach(([team, recs]) => {
-      const n = recs.length;
-      const row = { team, count: n, max: MAX,
-        avg: +(recs.reduce((s,r) => s + r.total, 0) / n).toFixed(2) };
-      CRITERIA_KEYS.forEach(c => {
-        row[c.id] = +(recs.reduce((s,r) => {
-          const sc = typeof r.scores === 'object' ? r.scores : JSON.parse(r.scores || '{}');
-          return s + (sc[c.id] || 0);
-        }, 0) / n).toFixed(2);
-      });
-      s2.addRow(row);
-    });
+    const summaryRows = Object.entries(teamMap)
+      .map(([team, recs]) => {
+        const n  = recs.length;
+        const sc = id => recs.reduce((s, r) => {
+          const scores = typeof r.scores === 'object' ? r.scores : JSON.parse(r.scores || '{}');
+          return s + (scores[id] || 0);
+        }, 0);
+        return {
+          team, n,
+          avgCrit: CRITERIA_KEYS.map(c => (sc(c.id) / n).toFixed(2)),
+          avgTotal: (recs.reduce((s, r) => s + r.total, 0) / n).toFixed(2)
+        };
+      })
+      .sort((a, b) => b.avgTotal - a.avgTotal)
+      .map(({ team, n, avgCrit, avgTotal }) =>
+        csvRow([team, n, ...avgCrit, avgTotal, MAX])
+      );
 
-    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    res.setHeader('Content-Disposition', `attachment; filename="NadiCare_Evaluations_${date}.xlsx"`);
-    await wb.xlsx.write(res);
-    res.end();
+    const lines = [
+      '=== ALL EVALUATIONS ===',
+      csvRow(evalHeaders),
+      ...evalRows,
+      '',
+      '=== TEAM SUMMARY (sorted by average score) ===',
+      csvRow(summaryHeaders),
+      ...summaryRows
+    ];
+
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="NadiCare_Evaluations_${date}.csv"`);
+    res.send('\uFEFF' + lines.join('\r\n')); // BOM for Excel UTF-8 compat
   } catch (err) {
-    console.error('Excel export error:', err.message);
+    console.error('CSV export error:', err.message);
     res.status(500).json({ error: 'Export failed' });
   }
 });
